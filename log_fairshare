@@ -1,0 +1,17 @@
+#!/bin/bash
+
+
+
+#datestring=`date +%Y/%m/%d-%H:%M`
+#levelfs=`sshare -o LevelFS -A $project -h | head -n 1 | tr -d ' '`
+#levelfs=${levelfs#*\ }
+#echo "$datestring,$levelfs"
+
+logdir=/scratch/$USER/usagelog
+project=rrg-akhanf_cpu
+timestamp=`date +%Y_%m_%d_%H_%M`
+mkdir -p $logdir
+
+sshare -o 'User,NormUsage' -A $project -a -h | sort -r -k 2,2 > $logdir/$timestamp.usage
+sshare -o 'User,LevelFS' -A $project -a -h | sort -r -k 2,2 > $logdir/$timestamp.levelFS
+

@@ -1,0 +1,45 @@
+#!/bin/bash
+
+
+#script for plotting
+logdir=/scratch/$USER/usagelog
+plotdir=/scratch/$USER/usagelog.currplot
+outdir=/scratch/$USER/usagelog.output
+timestamp=`date +%Y_%m_%d_%H_%M`
+mkdir -p $logdir $plotdir $outdir
+
+ndatapoints=168 # one week
+
+#to plot data, this gets the group total:
+tail -qn 1 $logdir/*.usage > $plotdir/plotdata.groupusage
+tail -qn 1 $logdir/*.levelFS > $plotdir/plotdata.groupfairshare
+
+sshare -o 'User' -A rrg-akhanf_cpu -a -h > $plotdir/userlist
+rm -f $plotdir/usertotals
+#loop through current users to get data for each
+for user in `cat $plotdir/userlist`
+do
+
+    grep -h $user $logdir/*.usage | awk '{print $2}' | tail -n $ndatapoints > $plotdir/plotdata.usage.$user
+    grep -h $user $logdir/*.levelFS | awk '{print $2}' | tail -n $ndatapoints > $plotdir/plotdata.levelFS.$user
+
+    echo "$user   `paste -sd+ $plotdir/plotdata.usage.$user | bc`" >> $plotdir/usertotals
+done
+
+topK=10
+
+#sort by total usage
+cat $plotdir/usertotals  |sort -r -k 2,2 | awk '{print $1}' | head -n $topK > $plotdir/top$topK.users
+
+#now use gnuplot to plot usage for all
+plot=$plotdir/current.plot
+#echo "set terminal dumb" > $plot
+echo "set terminal png" > $plot
+echo "set output \"$outdir/plotusage.$timestamp.png\"" >> $plot
+echo "plot \"$plotdir/plotdata.groupusage\" with lines title \"group\",\\" >> $plot
+for user in `cat $plotdir/top$topK.users`
+do
+	  echo "\"$plotdir/plotdata.usage.$user\" with lines title \"$user\",\\" >> $plot
+done
+
+gnuplot -p $plot
